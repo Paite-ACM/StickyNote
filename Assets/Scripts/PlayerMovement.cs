@@ -9,7 +9,8 @@ public enum MovementState
     WALKING,
     SPRINTING,
     AIR,
-    ZIP
+    ZIP,
+    WALL
 }
 
 public enum AimState
@@ -21,6 +22,7 @@ public enum AimState
 public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] private float speed;
+    [SerializeField] private float zipSpeed;
     [SerializeField] private float walkSpeed;
     [SerializeField] private float sprintSpeed;
     [SerializeField] private Transform orientation;
@@ -40,8 +42,11 @@ public class PlayerMovement : MonoBehaviour
     
 
     [SerializeField] private bool grounded;
+    [SerializeField] private bool stuckToWall;
     [SerializeField] private float height;
     [SerializeField] private LayerMask ground;
+    [SerializeField] private LayerMask zippableWall;
+    [SerializeField] private LayerMask Hazard;
 
     [SerializeField] float maxSlopeAngle;
     private RaycastHit slopeHit;
@@ -63,6 +68,7 @@ public class PlayerMovement : MonoBehaviour
     private Ray zipRay;
     private RaycastHit zipHit;
     Camera cam;
+    private Vector3 pathway;
 
     private void Start()
     {
@@ -78,8 +84,32 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
-
-
+        // this is here for now because while loops make me angry
+        if (state == MovementState.ZIP && !Physics.Raycast(transform.position, orientation.forward, 1f, ground))
+        {
+            if (zipHit.point.x > maxZipDistance.position.x && zipHit.point.z > maxZipDistance.position.z)
+            {
+                Debug.Log("too far");
+                state = MovementState.WALKING;
+                return;
+            }
+            else
+            {
+                transform.position += pathway * zipSpeed * Time.deltaTime;
+            }
+            
+        }
+        else
+        {
+            // check to make sure the player actually is still zipping
+            if (state == MovementState.ZIP)
+            {
+                rb.velocity = new Vector3(0, 0, 0);
+                rb.useGravity = false;
+                state = MovementState.WALL;
+                zipHit = new RaycastHit();
+            }
+        }
 
         // display/disable aiming line
         if (aimingState == AimState.NEUTRAL)
@@ -95,6 +125,8 @@ public class PlayerMovement : MonoBehaviour
 
         // check ground
         grounded = Physics.Raycast(transform.position, Vector3.down, height * 0.5f + 0.2f, ground);
+
+       
         SpeedControl();
         StateHandler();
         // handle drag
@@ -113,7 +145,7 @@ public class PlayerMovement : MonoBehaviour
     {
         // primarily just to check if airborne
 
-        if (!grounded)
+        if (!grounded && state != MovementState.ZIP && state != MovementState.WALL)
         {
             state = MovementState.AIR;
         }
@@ -144,33 +176,37 @@ public class PlayerMovement : MonoBehaviour
 
     private void MovePlayer()
     {
-        moveDir = orientation.forward * vertical + orientation.right * horizontal;
-
-        // slope handling
-        if (OnSlope())
+        if (state != MovementState.ZIP && state != MovementState.WALL)
         {
-            rb.AddForce(GetSlopeMoveDirection() * speed * 20f, ForceMode.Force);
+            moveDir = orientation.forward * vertical + orientation.right * horizontal;
 
-            if (rb.velocity.y > 0)
+            // slope handling
+            if (OnSlope())
             {
-                // keep player on slope
-                rb.AddForce(Vector3.down * 80f, ForceMode.Force);
+                rb.AddForce(GetSlopeMoveDirection() * speed * 20f, ForceMode.Force);
+
+                if (rb.velocity.y > 0)
+                {
+                    // keep player on slope
+                    rb.AddForce(Vector3.down * 80f, ForceMode.Force);
+                }
             }
-        }
 
-        // on the ground
-        if (grounded)
-        {
-            rb.AddForce(moveDir.normalized * speed * 10f, ForceMode.Force);
-        }
-        else
-        {
-            rb.AddForce(moveDir.normalized * speed * 10f * airMultiplier, ForceMode.Force);
-        }
+            // on the ground
+            if (grounded)
+            {
+                rb.AddForce(moveDir.normalized * speed * 10f, ForceMode.Force);
+            }
+            else
+            {
+                rb.AddForce(moveDir.normalized * speed * 10f * airMultiplier, ForceMode.Force);
+            }
 
 
-        // no more gravity while sloped
-        rb.useGravity = !OnSlope();
+            // no more gravity while sloped
+            rb.useGravity = !OnSlope();
+        }
+        
     }
 
 
@@ -185,15 +221,31 @@ public class PlayerMovement : MonoBehaviour
     // if this doesn't work then you probably didn't set the layer on the ground object
     public void Jump()
     {
-        exitingSlope = true;
-        if (readyToJump && grounded)
+        if (state != MovementState.ZIP && state != MovementState.WALL)
+        {
+            exitingSlope = true;
+            if (readyToJump && grounded)
+            {
+                readyToJump = false;
+                // reset y velocity
+                rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+                rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+
+                Invoke(nameof(ResetJump), jumpCooldown);
+            }
+        }
+        
+        if (state == MovementState.WALL)
         {
             readyToJump = false;
             // reset y velocity
             rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
-            rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+            // using transform.right because there's something off with the object's rotation i think
+            rb.AddForce(transform.right * jumpForce, ForceMode.Impulse);
 
+            state = MovementState.AIR;
             Invoke(nameof(ResetJump), jumpCooldown);
         }
 
@@ -270,14 +322,38 @@ public class PlayerMovement : MonoBehaviour
         // aiming raycast
         if (Physics.Raycast(cam.transform.position, cam.transform.forward, out zipHit) && aimingState == AimState.AIMING)
         {
-            // get path between the player's position and the raycasts target
-            float x = zipHit.point.x - transform.position.x;
-            float y = zipHit.point.y - transform.position.y;
-            float z = zipHit.point.z - transform.position.z;
-            Vector3 pathway = new Vector3(x, y, z);
+            StartCoroutine(ActivateZip());
+        }
+    }
 
-            pathway = pathway.normalized;
+    private IEnumerator ActivateZip()
+    {
+        // get off the ground
+        state = MovementState.AIR;
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
+        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+
+        yield return new WaitForSeconds(0.1f);
+
+        // get path between the player's position and the raycasts target
+        float x = zipHit.point.x - transform.position.x;
+        float y = zipHit.point.y - transform.position.y;
+        float z = zipHit.point.z - transform.position.z;
+        pathway = new Vector3(x, y, z);
+
+        pathway = pathway.normalized;
+
+        // zip to the desired position
+        aimingState = AimState.NEUTRAL;
+        state = MovementState.ZIP;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.layer == 8)
+        {
+            Debug.Log("Collision with hazard");
         }
     }
 }
