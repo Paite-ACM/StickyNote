@@ -57,7 +57,7 @@ public class PlayerMovement : MonoBehaviour
 
     public AimState aimingState;
 
-    // zip related stuff
+    // zip related stuff (lots of it probably unused now)
     [SerializeField] private Transform maxZipDistance;
     [SerializeField] LineRenderer lineRenderer;
     private Ray zipRay;
@@ -149,7 +149,7 @@ public class PlayerMovement : MonoBehaviour
         // slope handling
         if (OnSlope())
         {
-            rb.AddForce(GetSlopeMoveDirection() * speed * 20f, ForceMode.Force);
+            rb.AddForce(GetSlopeMoveDirection() * speed * 10f, ForceMode.Force);
 
             if (rb.velocity.y > 0)
             {
@@ -261,23 +261,6 @@ public class PlayerMovement : MonoBehaviour
         else
         {
             aimingState = AimState.AIMING; 
-        }
-    }
-
-    // time to zip
-    public void ZipToPosition()
-    {
-        // aiming raycast
-        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out zipHit) && aimingState == AimState.AIMING)
-        {
-            // get path between the player's position and the raycasts target
-            float x = zipHit.point.x - transform.position.x;
-            float y = zipHit.point.y - transform.position.y;
-            float z = zipHit.point.z - transform.position.z;
-            Vector3 pathway = new Vector3(x, y, z);
-
-            pathway = pathway.normalized;
-
         }
     }
 }
