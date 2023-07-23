@@ -24,15 +24,14 @@ public class ThirdPerson : MonoBehaviour
     [SerializeField] Transform combatLookAt;
     [SerializeField] private CinemachineFreeLook mainCamera;
 
-    private PlayerMovement playerController;
+    [SerializeField] private PlayerMovement plrMovement;
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // cache player
-        playerController = player.gameObject.GetComponent<PlayerMovement>();
+       
     }
 
     private void Update()
@@ -54,11 +53,7 @@ public class ThirdPerson : MonoBehaviour
                 // face the direction of the camera
                 if (inDir != Vector3.zero)
                 {
-                    if (playerController.state != MovementState.ZIP)
-                    {
-                        playerObj.forward = Vector3.Slerp(playerObj.forward, inDir.normalized, Time.deltaTime * rotateSpeed);
-                    }
-
+                    playerObj.forward = Vector3.Slerp(playerObj.forward, inDir.normalized, Time.deltaTime * rotateSpeed);
                 }
                 break;
             case CameraStyle.COMBAT:
@@ -71,7 +66,7 @@ public class ThirdPerson : MonoBehaviour
         }
 
         // camera fov based on if aiming
-        switch (playerController.aimingState)
+        switch (plrMovement.aimingState)
         {
             case AimState.NEUTRAL:
                 mainCamera.m_Lens.FieldOfView = 50;

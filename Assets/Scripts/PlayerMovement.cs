@@ -9,7 +9,7 @@ public enum MovementState
     WALKING,
     SPRINTING,
     AIR,
-    ZIP
+    FREEZE
 }
 
 public enum AimState
@@ -17,6 +17,7 @@ public enum AimState
     NEUTRAL,
     AIMING
 }
+
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -37,7 +38,9 @@ public class PlayerMovement : MonoBehaviour
 
     private bool readyToJump = true;
 
-    
+    public bool freeze;
+
+    public bool zipActive;
 
     [SerializeField] private bool grounded;
     [SerializeField] private float height;
@@ -51,11 +54,15 @@ public class PlayerMovement : MonoBehaviour
 
     private Vector3 moveDir;
 
+    private Vector3 velocityToSet;
+
     [SerializeField] private Rigidbody rb;
 
     private bool exitingSlope;
 
     public AimState aimingState;
+
+    private bool canMoveAgain;
 
     // zip related stuff (lots of it probably unused now)
     [SerializeField] private Transform maxZipDistance;
@@ -98,7 +105,7 @@ public class PlayerMovement : MonoBehaviour
         SpeedControl();
         StateHandler();
         // handle drag
-        if (grounded)
+        if (grounded && !zipActive)
         {
             rb.drag = groundDrag;
             
@@ -122,6 +129,39 @@ public class PlayerMovement : MonoBehaviour
         {
             state = MovementState.WALKING;
         }
+
+        // halting movement
+        if (freeze)
+        {
+            state = MovementState.FREEZE;
+            speed = 0;
+            rb.velocity = Vector3.zero;
+            
+        }
+    }
+
+    private void SetVelocity()
+    {
+        canMoveAgain = true;
+        rb.velocity = velocityToSet;
+    }
+
+    private void ResetZip()
+    {
+        zipActive = false;
+
+    }
+    
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (canMoveAgain)
+        {
+            canMoveAgain = false;
+            ResetZip();
+
+            GetComponent<Zipping>().StopZip();
+        }
     }
 
     public void Sprint(InputAction.CallbackContext context)
@@ -144,6 +184,11 @@ public class PlayerMovement : MonoBehaviour
 
     private void MovePlayer()
     {
+        if (zipActive)
+        {
+            return;
+        }
+
         moveDir = orientation.forward * vertical + orientation.right * horizontal;
 
         // slope handling
@@ -208,7 +253,11 @@ public class PlayerMovement : MonoBehaviour
 
     private void SpeedControl()
     {
-        
+        if (zipActive)
+        {
+            return;
+        }
+
         if (OnSlope() && !exitingSlope)
         {
             // slope speed limit
@@ -231,6 +280,19 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
+    }
+
+    // actually moving to zip spot
+    public void ZipToPosition(Vector3 target, float trajectoryHeight)
+    {
+        zipActive = true;
+        velocityToSet = CalculateZipVelocity(transform.position, target, trajectoryHeight);
+
+        // delay applying velocity by just a smidge
+        Invoke(nameof(SetVelocity), 0.1f);
+
+        // failsafe assuming something went wrong allow movement after a while
+        Invoke(nameof(ResetZip), 4.0f);
     }
 
     private bool OnSlope()
@@ -262,5 +324,18 @@ public class PlayerMovement : MonoBehaviour
         {
             aimingState = AimState.AIMING; 
         }
+    }
+
+    // calculations for zip force
+    public Vector3 CalculateZipVelocity(Vector3 startPoint, Vector3 endPoint, float trajectoryHeight)
+    {
+        float gravity = Physics.gravity.y;
+        float displacementY = endPoint.y - startPoint.y;
+        Vector3 displacementXZ = new Vector3(endPoint.x - startPoint.x, 0f, endPoint.z - startPoint.z);
+
+        Vector3 velocityY = Vector3.up * Mathf.Sqrt(-2 * gravity * trajectoryHeight);
+        Vector3 velocityXZ = displacementXZ / (Mathf.Sqrt(-2 * trajectoryHeight / gravity) + Mathf.Sqrt(2 * (displacementY - trajectoryHeight / gravity)));
+
+        return velocityXZ + velocityY;
     }
 }
