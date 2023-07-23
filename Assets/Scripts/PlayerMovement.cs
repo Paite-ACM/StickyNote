@@ -160,7 +160,7 @@ public class PlayerMovement : MonoBehaviour
             canMoveAgain = false;
             ResetZip();
 
-            GetComponent<Zipping>().StopZip();
+            //GetComponent<Zipping>().StopZip();
         }
     }
 

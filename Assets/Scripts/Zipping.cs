@@ -6,115 +6,80 @@ using UnityEngine.InputSystem;
 public class Zipping : MonoBehaviour
 {
 
-    [SerializeField] private PlayerMovement plrMovement;
-    [SerializeField] private Transform cam;
-    [SerializeField] private Transform zipAimer;
-    [SerializeField] private LayerMask zippable;
-    [SerializeField] private LineRenderer lr;
-
-    [SerializeField] private float maxZipDistance;
-    [SerializeField] private float zipDelay;
-    [SerializeField] private float overshootYAxis;
-
-    private Vector3 zipPoint;
-
-    [SerializeField] private float zipCooldown;
-    [SerializeField] private float zipCooldownTimer;
-
-    [SerializeField] private bool zipping;
-
-    private void Update()
+    //assignables
+    public Transform cameraTrans, player;
+    public LineRenderer line;
+    private SpringJoint grappleJoint;
+    //variables for where the end of the grapple is and what the distance can be
+    private Vector3 anchorPoint;
+    private float grappleDistance = 25;
+    //variables to check for grappling when its available
+    public LayerMask grappleLayers;
+    public bool isGrappling;
+    void Awake()
     {
-        if (zipCooldownTimer > 0)
-        {
-            zipCooldownTimer -= Time.deltaTime;
-        }
+        line = GetComponent<LineRenderer>();
     }
-
     private void Start()
     {
-        lr.enabled = false;
+        isGrappling = false;
     }
-
-    private void LateUpdate()
+    //input so the grapple can start. also needs to check if grappling since when the player dies the grapple still exists is its not checking for this bool
+    private void Update()
     {
-        if (zipping)
+        if (Input.GetKeyDown(KeyCode.E) && !isGrappling)
         {
-            // keep line position on the aimer object
-            lr.SetPosition(0, zipAimer.position);
+            StartGrapple();
+        }
+        else if (Input.GetKeyUp(KeyCode.E) && isGrappling)
+        {
+            StopGrapple();
         }
     }
-
-    // initiate zip
-    // public so that the input system can access it
-    public void StartZip(InputAction.CallbackContext context)
-    {
-        // only work if aiming in
-        if (plrMovement.aimingState == AimState.AIMING)
-        {
-            if (context.started)
-            {
-                // check if cooldown is already active
-                if (zipCooldownTimer > 0)
-                {
-                    return;
-                }
-
-                zipping = true;
-                plrMovement.freeze = true;
-
-                // funky little raycasting
-                RaycastHit hit;
-                if (Physics.Raycast(cam.position, cam.forward, out hit, maxZipDistance, zippable))
-                {
-                    zipPoint = hit.point;
-
-                    // call the execution of the zip on the specified delay
-                    Invoke(nameof(ExecuteZip), zipDelay);
-                }
-                else
-                {
-                    zipPoint = cam.position + cam.forward * maxZipDistance;
-
-                    Invoke(nameof(StopZip), zipDelay);
-                }
-
-                lr.enabled = true;
-                lr.SetPosition(1, zipPoint);
-            }
-            
-        }
+    private void LateUpdate()//this is in late update as to not lag behind since it is only applied after all
+    { //the calculations and not during so it looks a lot smoother then in the update function
+        GrappleLine();
     }
 
-    private void ExecuteZip()
+    private void StartGrapple()
     {
-        plrMovement.freeze = false;
-
-
-        // lowest point of the player
-        Vector3 lowestPoint = new Vector3(transform.position.x, transform.position.y - 1f, transform.position.z);
-
-        // difference between player's lowest point and where the zip target is & the overshoot
-        float zipPointRelativeYPos = zipPoint.y - lowestPoint.y;
-        float highestPointOnArc = zipPointRelativeYPos + overshootYAxis;
-
-        // use overshoot if point is below the player
-        if (zipPointRelativeYPos < 0)
+        RaycastHit hitInfo;
+        if (Physics.Raycast(cameraTrans.position, cameraTrans.forward, out hitInfo, grappleDistance, grappleLayers))
         {
-            highestPointOnArc = overshootYAxis;
+            isGrappling = true;
+            //sets the anchor point to be the raycasthit point to give the grapple a way to determine where it should be connected to
+            anchorPoint = hitInfo.point;
+            grappleJoint = player.gameObject.AddComponent<SpringJoint>();
+            //stops unity from auto configuring the anchor point so that I can set it to the anchorpoint from the hitInfo
+            grappleJoint.autoConfigureConnectedAnchor = false;
+            grappleJoint.connectedAnchor = anchorPoint;
+            //finds the distance from the player to the anchor point to help calculate how close or far the player can be to the grapple point before it no longer works
+            float distanceFromAnchor = Vector3.Distance(player.transform.position, anchorPoint);
+
+            //the distacne that the grapple will try to keep from the anchorpoint
+            grappleJoint.maxDistance = distanceFromAnchor * 0.4f;
+            grappleJoint.minDistance = distanceFromAnchor * 0.01f;
+
+            //changes the different effects of a spring joint to give different effects
+            grappleJoint.spring = 4.5f;
+            grappleJoint.massScale = 2.5f;
+            grappleJoint.damper = 4.5f;
+
+            line.positionCount = 2;
         }
-
-        plrMovement.ZipToPosition(zipPoint, highestPointOnArc);
-
-        // le delay
-        Invoke(nameof(StopZip), 1.0f);
     }
-
-    public void StopZip()
+    //destroys the spring joint that was added to the player and also makes sure that the line render is no longer shown
+    public void StopGrapple()
     {
-        plrMovement.freeze = false;
-        zipping = false;
-        zipCooldownTimer = zipCooldown;
-        lr.enabled = false;
+        line.positionCount = 0;
+        Destroy(grappleJoint);
+        isGrappling = false;
+    }
+    private void GrappleLine()
+    {
+        //if not grappling then don't do anything but when there is then create a render of the line from player to anchor
+        if (!grappleJoint) return;
+        line.SetPosition(0, player.transform.position);
+        line.SetPosition(1, anchorPoint);
     }
 }
