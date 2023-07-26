@@ -373,6 +373,7 @@ public class PlayerMovement : MonoBehaviour
             } */
 
             transform.position += pathway * zipSpeed * Time.deltaTime;
+            
         }
         else
         {
