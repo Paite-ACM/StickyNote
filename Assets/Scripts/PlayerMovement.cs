@@ -15,7 +15,9 @@ public enum MovementState
 public enum AimState
 {
     NEUTRAL,
-    AIMING
+    AIMING,
+    ZIPPING,
+    RUNNING
 }
 
 
@@ -89,15 +91,17 @@ public class PlayerMovement : MonoBehaviour
 
 
         // display/disable aiming line
-        if (aimingState == AimState.NEUTRAL)
+        switch (aimingState)
         {
-            lineRenderer.enabled = false;
-        }
-        else
-        {
-            lineRenderer.enabled = true;
-            lineRenderer.SetPosition(0, aimingPoint.position);
-            lineRenderer.SetPosition(1, maxZipDistance.position);
+            case AimState.AIMING:
+                lineRenderer.enabled = true;
+                //lineRenderer.positionCount = 2;
+                lineRenderer.SetPosition(0, aimingPoint.position);
+                lineRenderer.SetPosition(1, maxZipDistance.position);
+                break;
+            default:
+                lineRenderer.enabled = false;
+                break;
         }
 
         // check ground
@@ -170,11 +174,19 @@ public class PlayerMovement : MonoBehaviour
         {
             if (context.canceled)
             {
+                if (aimingState == AimState.RUNNING)
+                {
+                    aimingState = AimState.NEUTRAL;
+                }
                 state = MovementState.WALKING;
                 speed = walkSpeed;
             }
             else
             {
+                if (aimingState == AimState.NEUTRAL)
+                {
+                    aimingState = AimState.RUNNING;
+                }
                 state = MovementState.SPRINTING;
                 speed = sprintSpeed;
             }

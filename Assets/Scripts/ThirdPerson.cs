@@ -74,6 +74,13 @@ public class ThirdPerson : MonoBehaviour
             case AimState.AIMING:
                 mainCamera.m_Lens.FieldOfView = 30;
                 break;
+            case AimState.ZIPPING:
+                // test value
+                mainCamera.m_Lens.FieldOfView = 90;
+                break;
+            case AimState.RUNNING:
+                mainCamera.m_Lens.FieldOfView = 65;
+                break;
         } 
 
     }

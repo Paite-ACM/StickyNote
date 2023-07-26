@@ -12,30 +12,45 @@ public class Zipping : MonoBehaviour
     private SpringJoint grappleJoint;
     //variables for where the end of the grapple is and what the distance can be
     private Vector3 anchorPoint;
-    private float grappleDistance = 25;
+    private float grappleDistance = 50;
     //variables to check for grappling when its available
     public LayerMask grappleLayers;
     public bool isGrappling;
+
+    private PlayerMovement plrMovement;
+
     void Awake()
     {
-        line = GetComponent<LineRenderer>();
+        plrMovement = GetComponent<PlayerMovement>();
+        //line = GetComponent<LineRenderer>();
     }
     private void Start()
     {
+        line.enabled = false;
         isGrappling = false;
     }
     //input so the grapple can start. also needs to check if grappling since when the player dies the grapple still exists is its not checking for this bool
-    private void Update()
+
+    // input code for the funny unity input system
+    public void ZipStart(InputAction.CallbackContext context)
     {
-        if (Input.GetKeyDown(KeyCode.E) && !isGrappling)
+        // can only start if cam is aiming
+        if (plrMovement.aimingState == AimState.AIMING)
         {
-            StartGrapple();
+            if (!isGrappling)
+            {
+                StartGrapple();
+            }
         }
-        else if (Input.GetKeyUp(KeyCode.E) && isGrappling)
+
+
+        // release key
+        if (context.canceled)
         {
             StopGrapple();
         }
     }
+
     private void LateUpdate()//this is in late update as to not lag behind since it is only applied after all
     { //the calculations and not during so it looks a lot smoother then in the update function
         GrappleLine();
@@ -43,9 +58,14 @@ public class Zipping : MonoBehaviour
 
     private void StartGrapple()
     {
+        Debug.Log("StartGrapple called!");
         RaycastHit hitInfo;
         if (Physics.Raycast(cameraTrans.position, cameraTrans.forward, out hitInfo, grappleDistance, grappleLayers))
         {
+            // change camera fov
+            plrMovement.aimingState = AimState.ZIPPING;
+
+            Debug.Log("Raycast hit!");
             isGrappling = true;
             //sets the anchor point to be the raycasthit point to give the grapple a way to determine where it should be connected to
             anchorPoint = hitInfo.point;
@@ -65,20 +85,26 @@ public class Zipping : MonoBehaviour
             grappleJoint.massScale = 2.5f;
             grappleJoint.damper = 4.5f;
 
+            line.enabled = true;
             line.positionCount = 2;
         }
     }
     //destroys the spring joint that was added to the player and also makes sure that the line render is no longer shown
     public void StopGrapple()
     {
+        Debug.Log("StopGrapple() called!");
         line.positionCount = 0;
+        plrMovement.aimingState = AimState.NEUTRAL;
         Destroy(grappleJoint);
         isGrappling = false;
     }
     private void GrappleLine()
     {
         //if not grappling then don't do anything but when there is then create a render of the line from player to anchor
-        if (!grappleJoint) return;
+        if (!grappleJoint)
+        {
+            return;
+        }
         line.SetPosition(0, player.transform.position);
         line.SetPosition(1, anchorPoint);
     }
