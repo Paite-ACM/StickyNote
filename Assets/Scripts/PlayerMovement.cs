@@ -23,15 +23,14 @@ public enum AimState
 public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] private float speed;
-    [SerializeField] private float zipSpeed;
     [SerializeField] private float walkSpeed;
     [SerializeField] private float sprintSpeed;
-    [SerializeField] private Transform orientation;
+    public Transform orientation;
     public Transform aimingPoint;
 
     [SerializeField] private float groundDrag;
 
-    [SerializeField] private float jumpForce;
+    public float jumpForce;
     [SerializeField] private float jumpCooldown;
     [SerializeField] private float airMultiplier;
 
@@ -45,7 +44,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private bool grounded;
     [SerializeField] private bool stuckToWall;
     [SerializeField] private float height;
-    [SerializeField] private LayerMask ground;
+    public LayerMask ground;
     [SerializeField] private LayerMask zippableWall;
     [SerializeField] private LayerMask Hazard;
 
@@ -87,12 +86,6 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
-        ZipMovement();
-
-        if (state == MovementState.ZIP)
-        {
-            zipTimer += Time.deltaTime;
-        }
 
         // display/disable aiming line
         if (aimingState == AimState.NEUTRAL)
@@ -226,7 +219,7 @@ public class PlayerMovement : MonoBehaviour
             rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
             // using transform.right because there's something off with the object's rotation i think
-            rb.AddForce(transform.right * jumpForce, ForceMode.Impulse);
+            rb.AddForce(transform.right * (jumpForce * 2), ForceMode.Impulse);
 
             state = MovementState.AIR;
             Invoke(nameof(ResetJump), jumpCooldown);
@@ -299,106 +292,14 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    // time to zip
-    public void ZipToPosition()
-    {
-        // aiming raycast
-        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out zipHit) && aimingState == AimState.AIMING)
-        {
-            Debug.Log(zipHit.point);
-            Debug.Log(maxZipDistance.position);
-            StartCoroutine(ActivateZip());
-        }
-    }
-
-    private IEnumerator ActivateZip()
-    {
-        // if the object is further away from the maxZipDistance obj then it won't let you do anything
-        if (zipHit.point.x > maxZipDistance.position.x && zipHit.point.y > maxZipDistance.position.y && zipHit.point.z > maxZipDistance.position.z)
-        {
-            Debug.Log("too far");
-            Debug.Log("ziphit = " + zipHit.point.x);
-            state = MovementState.WALKING;
-            yield return null;
-        }
-
-        // get off the ground if not already off the ground
-        if (state != MovementState.AIR)
-        {
-            state = MovementState.AIR;
-            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-
-            rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-        }
-
-        yield return new WaitForSeconds(0.1f);
-
-        // get path between the player's position and the raycasts target
-        float x = zipHit.point.x - transform.position.x;
-        float y = zipHit.point.y - transform.position.y;
-        float z = zipHit.point.z - transform.position.z;
-        pathway = new Vector3(x, y, z);
-
-        pathway = pathway.normalized;
-
-        // zip to the desired position
-        aimingState = AimState.NEUTRAL;
-        state = MovementState.ZIP;
-    }
-
-    // what actually moves the player during a zip
-    private void ZipMovement()
-    {
-        if (state != MovementState.ZIP)
-        {
-            return;
-        }
-
-        // moved from Update() for organisation
-        if (!Physics.Raycast(transform.position, orientation.forward, 1f, ground))
-        {
-            // if the object is further away from the maxZipDistance obj then it won't let you do anything
-            /*if (zipHit.point.x > maxZipDistance.position.x && zipHit.point.y > maxZipDistance.position.y && zipHit.point.z > maxZipDistance.position.z)
-            {
-                Debug.Log("too far");
-                Debug.Log("ziphit = " + zipHit.point.x);
-                state = MovementState.WALKING;
-                return;
-            }
-            else
-            {
-                // move object
-                transform.position += pathway * zipSpeed * Time.deltaTime;
-                //rb.AddForce(pathway * zipSpeed * Time.deltaTime, ForceMode.Force);
-            } */
-
-            transform.position += pathway * zipSpeed * Time.deltaTime;
-            
-        }
-        else
-        {
-            // check to make sure the player actually is still zipping
-            if (state == MovementState.ZIP)
-            {
-                rb.velocity = new Vector3(0, 0, 0);
-                rb.useGravity = false;
-                state = MovementState.WALL;
-                zipHit = new RaycastHit();
-            }
-        }
-    }
-
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.layer == 8)
         {
             Debug.Log("Collision with hazard");
         }
-    }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.gameObject.tag == "Respawner")
+        if (collision.gameObject.tag == "Respawner")
         {
             // placeholder thing to reset if you fall through the ground
             SceneManager.LoadScene("SampleScene");
