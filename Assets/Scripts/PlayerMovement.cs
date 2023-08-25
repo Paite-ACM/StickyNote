@@ -22,6 +22,7 @@ public enum AimState
 
 public class PlayerMovement : MonoBehaviour
 {
+    [SerializeField] private Transform playerObj;
     [SerializeField] private float speed;
     [SerializeField] private float walkSpeed;
     [SerializeField] private float sprintSpeed;
@@ -34,6 +35,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float jumpCooldown;
     [SerializeField] private float airMultiplier;
 
+    // modifier for jumping off of a wall
+    [SerializeField] private float jumpBoostModifier;
 
     public MovementState state;
 
@@ -182,6 +185,10 @@ public class PlayerMovement : MonoBehaviour
             // no more gravity while sloped
             rb.useGravity = !OnSlope();
         }
+        else
+        {
+            return;
+        }
         
     }
 
@@ -216,10 +223,10 @@ public class PlayerMovement : MonoBehaviour
         {
             readyToJump = false;
             // reset y velocity
-            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+            rb.velocity = new Vector3(rb.velocity.x, playerObj.rotation.y, rb.velocity.z);
 
             // using transform.right because there's something off with the object's rotation i think
-            rb.AddForce(transform.right * (jumpForce * 2), ForceMode.Impulse);
+            rb.AddForce(transform.up * (jumpForce * jumpBoostModifier), ForceMode.Impulse);
 
             state = MovementState.AIR;
             Invoke(nameof(ResetJump), jumpCooldown);
@@ -299,10 +306,31 @@ public class PlayerMovement : MonoBehaviour
             Debug.Log("Collision with hazard");
         }
 
-        if (collision.gameObject.tag == "Respawner")
+
+        switch (collision.gameObject.tag)
         {
-            // placeholder thing to reset if you fall through the ground
-            SceneManager.LoadScene("SampleScene");
+            case "Respawner":
+                // placeholder thing to reset if you fall through the ground
+                SceneManager.LoadScene("SampleScene");
+                break;
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        Debug.Log("OnTriggerEnter()");
+        switch (other.gameObject.tag)
+        {
+            case "Collectable":
+                Debug.Log("Collision!");
+                switch (other.gameObject.GetComponent<Collectables>().colletableType)
+                {
+                    case CollectableType.COIN:
+                        GetComponent<Player>().Score += other.gameObject.GetComponent<Collectables>().scoreToGive;
+                        Destroy(other.gameObject);
+                        break;
+                }
+                break;
         }
     }
 }

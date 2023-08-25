@@ -2,17 +2,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum CollectableType
+{
+    COIN
+}
+
 public class Collectables : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+    public CollectableType colletableType;
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    public int scoreToGive;
+
 }

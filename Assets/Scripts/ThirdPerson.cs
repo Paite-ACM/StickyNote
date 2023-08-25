@@ -54,7 +54,7 @@ public class ThirdPerson : MonoBehaviour
                 // face the direction of the camera
                 if (inDir != Vector3.zero)
                 {
-                    if (playerController.state != MovementState.ZIP)
+                    if (playerController.state != MovementState.ZIP && playerController.state != MovementState.WALL)
                     {
                         playerObj.forward = Vector3.Slerp(playerObj.forward, inDir.normalized, Time.deltaTime * rotateSpeed);
                     }
