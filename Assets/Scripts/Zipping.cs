@@ -16,6 +16,7 @@ public class Zipping : MonoBehaviour
     [SerializeField] private Transform minZipDistance;
     //[SerializeField] LineRenderer lineRenderer;
     [SerializeField] private float zipSpeed;
+    [SerializeField] private LayerMask zippableWall;
     private Ray zipRay;
     private RaycastHit zipHit;
     Camera cam;
@@ -44,9 +45,14 @@ public class Zipping : MonoBehaviour
         // aiming raycast
         if (Physics.Raycast(cam.transform.position, cam.transform.forward, out zipHit) && plrMovement.aimingState == AimState.AIMING)
         {
-            Debug.Log(zipHit.point);
-            Debug.Log(maxZipDistance.position);
-            StartCoroutine(ActivateZip());
+            Debug.Log("zipHit layer: " + zipHit.transform.gameObject.layer);
+            Debug.Log("zippableWall layer: " + LayerMask.NameToLayer("Wall"));
+            if (zipHit.transform.gameObject.layer == LayerMask.NameToLayer("Wall"))
+            {
+                Debug.Log(zipHit.point);
+                Debug.Log(maxZipDistance.position);
+                StartCoroutine(ActivateZip());
+            }
         }
     }
 

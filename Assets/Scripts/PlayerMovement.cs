@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -48,7 +47,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private bool stuckToWall;
     [SerializeField] private float height;
     public LayerMask ground;
-    [SerializeField] private LayerMask zippableWall;
     [SerializeField] private LayerMask Hazard;
 
     [SerializeField] float maxSlopeAngle;
@@ -330,6 +328,14 @@ public class PlayerMovement : MonoBehaviour
                         Destroy(other.gameObject);
                         break;
                 }
+                break;
+            case "Checkpoint":
+                // checkpoint animation
+                other.gameObject.GetComponent<Checkpoint>().ActivateCheckpoint();
+                // set saving location
+                GetComponent<Player>().CurrentCheckPointX = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.x;
+                GetComponent<Player>().CurrentCheckPointY = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.y;
+                GetComponent<Player>().CurrentCheckPointZ = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.z;
                 break;
         }
     }
