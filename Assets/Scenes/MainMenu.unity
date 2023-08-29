@@ -1054,7 +1054,7 @@ GameObject:
   - component: {fileID: 1586966872}
   - component: {fileID: 1586966871}
   m_Layer: 5
-  m_Name: Text (Legacy)
+  m_Name: VerInfo
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1113,7 +1113,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 'v0.1
+  m_Text: 'v0.1.1
 
     Created by MrLewisPaite'
 --- !u!222 &1586966872

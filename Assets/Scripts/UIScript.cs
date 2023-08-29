@@ -23,6 +23,7 @@ public class UIScript : MonoBehaviour
             menuActive = true;
             menuObj.SetActive(true);
             Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
             eventSystem.SetSelectedGameObject(defMenuObj);
         }
         else
@@ -30,6 +31,7 @@ public class UIScript : MonoBehaviour
             menuActive = false;
             menuObj.SetActive(false);
             Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
     }
 
@@ -50,5 +52,11 @@ public class UIScript : MonoBehaviour
     public void QuitButton()
     {
         SceneManager.LoadScene("MainMenu");
+    }
+
+    // display death screen
+    public void PlayerDeathScreen()
+    {
+
     }
 }

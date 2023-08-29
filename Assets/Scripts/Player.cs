@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Player : MonoBehaviour
 {
@@ -67,5 +68,19 @@ public class Player : MonoBehaviour
 
         lives = data.lives;
         score = data.score;
+    }
+
+    public void PlayerDeath()
+    {
+        lives--;
+        if (lives < 1)
+        {
+            SceneManager.LoadScene("GameOver");
+        }
+        else
+        {
+            GameObject uiObj = GameObject.Find("Canvas");
+            uiObj.GetComponent<UIScript>().PlayerDeathScreen();
+        }
     }
 }

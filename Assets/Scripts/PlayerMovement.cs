@@ -299,6 +299,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
+        // hazard layer
         if (collision.gameObject.layer == 8)
         {
             Debug.Log("Collision with hazard");
