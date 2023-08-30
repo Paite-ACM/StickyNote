@@ -10,7 +10,8 @@ public enum MovementState
     SPRINTING,
     AIR,
     ZIP,
-    WALL
+    WALL,
+    DEATH
 }
 
 public enum AimState
@@ -31,22 +32,25 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float groundDrag;
 
     public float jumpForce;
+    [SerializeField] private float jumpForceDefault;
     [SerializeField] private float jumpCooldown;
     [SerializeField] private float airMultiplier;
 
     // modifier for jumping off of a wall
-    [SerializeField] private float jumpBoostModifier;
+    [SerializeField] private float wallJumpModifier;
 
     public MovementState state;
 
     private bool readyToJump = true;
 
-    
+
+    private bool groundedOnIce;
 
     [SerializeField] private bool grounded;
     [SerializeField] private bool stuckToWall;
     [SerializeField] private float height;
     public LayerMask ground;
+    public LayerMask ice;
     [SerializeField] private LayerMask Hazard;
 
     [SerializeField] float maxSlopeAngle;
@@ -72,6 +76,10 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 pathway;
 
     private float zipTimer;
+
+    private bool onJumpBoost;
+
+    private float jumpBoostModifier;
 
     private void Start()
     {
@@ -103,6 +111,8 @@ public class PlayerMovement : MonoBehaviour
         // check ground
         grounded = Physics.Raycast(transform.position, Vector3.down, height * 0.5f + 0.2f, ground);
 
+        // ice ground
+        groundedOnIce = Physics.Raycast(transform.position, Vector3.down, height * 0.5f + 0.2f, ice);
        
         SpeedControl();
         StateHandler();
@@ -153,7 +163,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void MovePlayer()
     {
-        if (state != MovementState.ZIP && state != MovementState.WALL)
+        if (state != MovementState.ZIP && state != MovementState.WALL && state != MovementState.DEATH)
         {
             moveDir = orientation.forward * vertical + orientation.right * horizontal;
 
@@ -202,11 +212,33 @@ public class PlayerMovement : MonoBehaviour
     // if this doesn't work then you probably didn't set the layer on the ground object
     public void Jump()
     {
-        if (state != MovementState.ZIP && state != MovementState.WALL)
+        if (state != MovementState.ZIP && state != MovementState.WALL && state != MovementState.DEATH)
         {
             exitingSlope = true;
             if (readyToJump && grounded)
             {
+                if (onJumpBoost)
+                {
+                    jumpForce *= jumpBoostModifier;
+                }
+
+                readyToJump = false;
+                // reset y velocity
+                rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+                rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+
+                Invoke(nameof(ResetJump), jumpCooldown);
+            }
+            
+            // wow copying everything again i'm disappointed in you, me.
+            if (readyToJump && groundedOnIce)
+            {
+                if (onJumpBoost)
+                {
+                    jumpForce *= jumpBoostModifier;
+                }
+
                 readyToJump = false;
                 // reset y velocity
                 rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
@@ -224,7 +256,7 @@ public class PlayerMovement : MonoBehaviour
             rb.velocity = new Vector3(rb.velocity.x, playerObj.rotation.y, rb.velocity.z);
 
             // using transform.right because there's something off with the object's rotation i think
-            rb.AddForce(transform.up * (jumpForce * jumpBoostModifier), ForceMode.Impulse);
+            rb.AddForce(transform.up * (jumpForce * wallJumpModifier), ForceMode.Impulse);
 
             state = MovementState.AIR;
             Invoke(nameof(ResetJump), jumpCooldown);
@@ -299,18 +331,21 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        // hazard layer
-        if (collision.gameObject.layer == 8)
-        {
-            Debug.Log("Collision with hazard");
-        }
 
 
-        switch (collision.gameObject.tag)
+        switch (collision.gameObject.layer)
         {
-            case "Respawner":
+            // hazard layer
+            case 8:
+                collision.gameObject.GetComponent<BoxCollider>().enabled = false;
+                state = MovementState.DEATH;
+                Debug.Log("Collision with hazard");
+                GetComponent<Player>().PlayerDeath();
+                break;
+            // respawn layer
+            case 10:
                 // placeholder thing to reset if you fall through the ground
-                SceneManager.LoadScene("SampleScene");
+                SceneManager.LoadScene("MainScene");
                 break;
         }
     }
@@ -337,6 +372,27 @@ public class PlayerMovement : MonoBehaviour
                 GetComponent<Player>().CurrentCheckPointX = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.x;
                 GetComponent<Player>().CurrentCheckPointY = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.y;
                 GetComponent<Player>().CurrentCheckPointZ = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.z;
+                // save
+                GetComponent<Player>().SavePlayer();
+                break;
+            case "JumpBoost":
+                Debug.Log("On jump boost");
+                onJumpBoost = true;
+                jumpBoostModifier = other.gameObject.GetComponent<JumpPad>().BoostMultiplier;
+                break;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        Debug.Log("OnTriggerExit");
+        switch (other.gameObject.tag)
+        {
+            case "JumpBoost":
+                Debug.Log("Jelp");
+                jumpBoostModifier = 0f;
+                jumpForce = jumpForceDefault;
+                onJumpBoost = false;
                 break;
         }
     }

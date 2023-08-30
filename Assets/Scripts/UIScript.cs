@@ -12,6 +12,11 @@ public class UIScript : MonoBehaviour
     [SerializeField] private EventSystem eventSystem;
     [SerializeField] private GameObject menuObj;
     [SerializeField] private GameObject defMenuObj;
+    [SerializeField] private Text livesText;
+
+    // Death screen
+    [SerializeField] private GameObject diedObj;
+    [SerializeField] private GameObject defDeathObj;
 
     private bool menuActive;
 
@@ -38,6 +43,7 @@ public class UIScript : MonoBehaviour
     private void Update()
     {
         scoreText.text = "Score: " + player.Score;
+        livesText.text = "Lives: " + player.Lives;
     }
 
     // pressing unpause button
@@ -51,12 +57,23 @@ public class UIScript : MonoBehaviour
     // quit to menu button
     public void QuitButton()
     {
+        player.SavePlayer();
         SceneManager.LoadScene("MainMenu");
     }
 
     // display death screen
     public void PlayerDeathScreen()
     {
+        diedObj.SetActive(true);
+        eventSystem.SetSelectedGameObject(defDeathObj);
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
 
+    // death screen retry button
+    public void RetryButton()
+    {
+        player.SavePlayer();
+        SceneManager.LoadScene("MainScene");
     }
 }

@@ -52,12 +52,15 @@ public class Player : MonoBehaviour
 
     public void SavePlayer()
     {
+        Debug.Log("Saving player data");
         SaveSystem.SaveGame(this);
     }
 
     public void LoadPlayer()
     {
         PlayerData data = SaveSystem.LoadPlayer();
+
+        Debug.Log("DATA: \nlives = " + data.lives + " \nscore = " + data.score + "\nhasReachedCheckpoint = " + data.hasReachedCheckpoint);
 
         // loading checkpoint position data
         if (data.hasReachedCheckpoint)
@@ -72,7 +75,14 @@ public class Player : MonoBehaviour
 
     public void PlayerDeath()
     {
-        lives--;
+        GetComponentInChildren<BoxCollider>().enabled = false;
+        float livesPrev = lives;
+
+        if (lives == livesPrev)
+        {
+            lives--;
+        }
+        
         if (lives < 1)
         {
             SceneManager.LoadScene("GameOver");
@@ -81,6 +91,20 @@ public class Player : MonoBehaviour
         {
             GameObject uiObj = GameObject.Find("Canvas");
             uiObj.GetComponent<UIScript>().PlayerDeathScreen();
+        }
+    }
+
+    private void Awake()
+    {
+        // check save
+        if (!SaveSystem.DoesPlayerFileExist())
+        {
+            SaveSystem.CreatePlayerFile(this);
+            SavePlayer();
+        }
+        else
+        {
+            LoadPlayer();
         }
     }
 }
