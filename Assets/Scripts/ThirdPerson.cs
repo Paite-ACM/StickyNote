@@ -25,6 +25,8 @@ public class ThirdPerson : MonoBehaviour
 
     private PlayerMovement playerController;
 
+    private bool controllerMode;
+
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
@@ -80,5 +82,20 @@ public class ThirdPerson : MonoBehaviour
                 break;
         } 
 
+        // camera controller sensitivity
+        if (controllerMode)
+        {
+            mainCamera.m_XAxis.m_MaxSpeed = 1;
+        }
+        else
+        {
+            mainCamera.m_XAxis.m_MaxSpeed = 0.1f;
+        }
+
+    }
+
+    public void ToggleControllerMode(bool toggle)
+    {
+        controllerMode = toggle;
     }
 }

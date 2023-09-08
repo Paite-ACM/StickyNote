@@ -9,6 +9,7 @@ TagManager:
   - Collectable
   - Checkpoint
   - JumpBoost
+  - Goal
   layers:
   - Default
   - TransparentFX

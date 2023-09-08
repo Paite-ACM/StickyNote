@@ -58,6 +58,11 @@ public class Zipping : MonoBehaviour
 
     private IEnumerator ActivateZip()
     {
+        // values for a bit later, moved to test something
+        float x = zipHit.point.x - transform.position.x;
+        float y = zipHit.point.y - transform.position.y;
+        float z = zipHit.point.z - transform.position.z;
+
         // d1 is the distance between the player object and the object representing the max zip range
         // d2 is the distance between the player and the current zip target
         // d3 is the distance between the player and the object representing the minimum zip range
@@ -95,9 +100,7 @@ public class Zipping : MonoBehaviour
             
 
             // get path between the player's position and the raycasts target
-            float x = zipHit.point.x - transform.position.x;
-            float y = zipHit.point.y - transform.position.y;
-            float z = zipHit.point.z - transform.position.z;
+
             pathway = new Vector3(x, y, z);
 
             pathway = pathway.normalized;

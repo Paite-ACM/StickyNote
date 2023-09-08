@@ -372,6 +372,7 @@ public class PlayerMovement : MonoBehaviour
                 GetComponent<Player>().CurrentCheckPointX = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.x;
                 GetComponent<Player>().CurrentCheckPointY = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.y;
                 GetComponent<Player>().CurrentCheckPointZ = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.z;
+                GetComponent<Player>().HasReachedCheckpoint = true;
                 // save
                 GetComponent<Player>().SavePlayer();
                 break;
@@ -379,6 +380,10 @@ public class PlayerMovement : MonoBehaviour
                 Debug.Log("On jump boost");
                 onJumpBoost = true;
                 jumpBoostModifier = other.gameObject.GetComponent<JumpPad>().BoostMultiplier;
+                break;
+            case "Goal":
+                GameObject uiObj = GameObject.Find("Canvas");
+                uiObj.GetComponent<UIScript>().PlayerWinScreen();
                 break;
         }
     }
