@@ -9,3 +9,10 @@ Version 0.2
 >Implemented save system
 >Fixed cursor not appearing when openning the menu
 >Fixed respawn object not functioning
+
+Version 0.3
+>Added the abilitiy to cancel a zip by jumping
+>Added an additional checkpoint and collectable
+>Added a goal object and win screen
+>Made smooth FOV changes when zipping
+>Falling below the map now counts as a death instead of just reloading the scene

@@ -17,6 +17,7 @@ public class Zipping : MonoBehaviour
     //[SerializeField] LineRenderer lineRenderer;
     [SerializeField] private float zipSpeed;
     [SerializeField] private LayerMask zippableWall;
+    [SerializeField] private ThirdPerson tpCam;
     private Ray zipRay;
     private RaycastHit zipHit;
     Camera cam;
@@ -58,6 +59,7 @@ public class Zipping : MonoBehaviour
 
     private IEnumerator ActivateZip()
     {
+        tpCam.timeElapsed = 0f;
         // values for a bit later, moved to test something
         float x = zipHit.point.x - transform.position.x;
         float y = zipHit.point.y - transform.position.y;

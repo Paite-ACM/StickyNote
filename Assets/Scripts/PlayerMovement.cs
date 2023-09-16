@@ -262,6 +262,12 @@ public class PlayerMovement : MonoBehaviour
             Invoke(nameof(ResetJump), jumpCooldown);
         }
 
+        // break out of zip
+        if (state == MovementState.ZIP)
+        {
+             state = MovementState.AIR;
+        }
+
     }
 
     // allows player to jump

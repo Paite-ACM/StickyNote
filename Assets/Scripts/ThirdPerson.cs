@@ -22,10 +22,13 @@ public class ThirdPerson : MonoBehaviour
     [SerializeField] private CameraStyle style;
     [SerializeField] Transform combatLookAt;
     [SerializeField] private CinemachineFreeLook mainCamera;
+    [SerializeField] private float fovChangeLerpDuration;
 
     private PlayerMovement playerController;
 
     private bool controllerMode;
+
+    public float timeElapsed;
 
     private void Start()
     {
@@ -71,16 +74,50 @@ public class ThirdPerson : MonoBehaviour
                 break;
         }
 
-        // camera fov based on if aiming
-        switch (playerController.aimingState)
+        
+
+        // camera fov change on zip
+        if (playerController.state == MovementState.ZIP)
         {
-            case AimState.NEUTRAL:
-                mainCamera.m_Lens.FieldOfView = 50;
-                break;
-            case AimState.AIMING:
-                mainCamera.m_Lens.FieldOfView = 30;
-                break;
-        } 
+            if (timeElapsed < fovChangeLerpDuration)
+            {
+                mainCamera.m_Lens.FieldOfView = Mathf.Lerp(mainCamera.m_Lens.FieldOfView, 90f, timeElapsed / fovChangeLerpDuration);
+                timeElapsed += Time.deltaTime;
+            }
+            else
+            {
+                mainCamera.m_Lens.FieldOfView = 90f;
+                timeElapsed = 0f;
+            }
+        }
+        else if (playerController.state == MovementState.WALL)
+        {
+            // the same but backwards
+            if (timeElapsed < fovChangeLerpDuration)
+            {
+                mainCamera.m_Lens.FieldOfView = Mathf.Lerp(mainCamera.m_Lens.FieldOfView, 50f, timeElapsed / fovChangeLerpDuration);
+                timeElapsed += Time.deltaTime;
+            }
+            else
+            {
+                mainCamera.m_Lens.FieldOfView = 50f;
+                timeElapsed = 0f;
+            }
+        }
+        else
+        {
+            // camera fov based on if aiming
+            switch (playerController.aimingState)
+            {
+                case AimState.NEUTRAL:
+                    mainCamera.m_Lens.FieldOfView = 50;
+                    break;
+                case AimState.AIMING:
+                    mainCamera.m_Lens.FieldOfView = 30;
+                    break;
+            }
+        }
+        
 
         // camera controller sensitivity
         if (controllerMode)
