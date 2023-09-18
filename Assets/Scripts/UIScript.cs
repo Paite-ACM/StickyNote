@@ -104,6 +104,7 @@ public class UIScript : MonoBehaviour
     // do animation
     private IEnumerator CheckpointUI()
     {
+        Debug.LogWarning("COROUTINE CALLED");
         checkpointNotif.SetActive(true);
 
         yield return new WaitForSeconds(1.5f);
@@ -123,6 +124,8 @@ public class UIScript : MonoBehaviour
         powerupText.text = "Powerup Got:\n" + name;
 
         yield return new WaitForSeconds(1.5f);
+
+        powerupNotif.SetActive(false);
     }
 
 }

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Xml;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -94,6 +95,9 @@ public class PlayerMovement : MonoBehaviour
     private bool doubleJumped;
     private float doubleJumpTimer;
     [SerializeField] private float doubleJumpTimerLength;
+
+    // shield powerup
+    [SerializeField] private GameObject shieldObj;
 
     private void Start()
     {
@@ -355,6 +359,13 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    // when getting hit while a shield is active
+    private void DestroyShield()
+    {
+        shieldObj.SetActive(false);
+        currentPowerup = PowerupState.NONE;
+    }
+
     private void OnCollisionEnter(Collision collision)
     {
 
@@ -363,15 +374,26 @@ public class PlayerMovement : MonoBehaviour
         {
             // hazard layer
             case 8:
+                if (currentPowerup != PowerupState.SHIELD)
+                {
+                    collision.gameObject.GetComponent<BoxCollider>().enabled = false;
+                    state = MovementState.DEATH;
+                    Debug.Log("Collision with hazard");
+                    GetComponent<Player>().PlayerDeath();
+                }
+                else
+                {
+                    DestroyShield();
+                }
+                
+                break;
+            // respawn layer
+            case 10:
+                // ignores shield powerup
                 collision.gameObject.GetComponent<BoxCollider>().enabled = false;
                 state = MovementState.DEATH;
                 Debug.Log("Collision with hazard");
                 GetComponent<Player>().PlayerDeath();
-                break;
-            // respawn layer
-            case 10:
-                // placeholder thing to reset if you fall through the ground
-                SceneManager.LoadScene("MainScene");
                 break;
         }
     }
@@ -429,6 +451,7 @@ public class PlayerMovement : MonoBehaviour
                         break;
                     case PowerupState.SHIELD:
                         powerupName = "Bubble Shield";
+                        shieldObj.SetActive(true);
                         break;
                 }
                 currentPowerup = other.gameObject.GetComponent<Powerup>().powerup;
