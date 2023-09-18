@@ -22,6 +22,11 @@ public class UIScript : MonoBehaviour
     [SerializeField] private GameObject winObj;
     [SerializeField] private GameObject defWinObj;
 
+    // notifs
+    [SerializeField] private GameObject checkpointNotif;
+    [SerializeField] private GameObject powerupNotif;
+    [SerializeField] private Text powerupText;
+
     private bool menuActive;
 
     // turning on/off the menu by pressing escape
@@ -89,4 +94,35 @@ public class UIScript : MonoBehaviour
         player.SavePlayer();
         SceneManager.LoadScene("MainScene");
     }
+
+    // call from other script
+    public void CheckpointNotif()
+    {
+        StartCoroutine(CheckpointUI());
+    }
+
+    // do animation
+    private IEnumerator CheckpointUI()
+    {
+        checkpointNotif.SetActive(true);
+
+        yield return new WaitForSeconds(1.5f);
+
+        checkpointNotif.SetActive(false);
+    }
+
+    // same deal
+    public void PowerupNotif(string name)
+    {
+        StartCoroutine(PowerupUI(name));
+    }
+
+    private IEnumerator PowerupUI(string name)
+    {
+        powerupNotif.SetActive(true);
+        powerupText.text = "Powerup Got:\n" + name;
+
+        yield return new WaitForSeconds(1.5f);
+    }
+
 }

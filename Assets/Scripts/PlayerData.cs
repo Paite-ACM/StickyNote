@@ -11,6 +11,7 @@ public class PlayerData
     public float currentCheckPointY;
     public float currentCheckPointZ;
     public bool hasReachedCheckpoint;
+    public bool controllerMode;
 
     public PlayerData(Player player)
     {
@@ -20,5 +21,6 @@ public class PlayerData
         currentCheckPointY = player.CurrentCheckPointY;
         currentCheckPointZ = player.CurrentCheckPointZ;
         hasReachedCheckpoint = player.HasReachedCheckpoint;
+        controllerMode = player.ControllerMode;
     }
 }

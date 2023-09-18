@@ -30,6 +30,7 @@ public class Checkpoint : MonoBehaviour
 
     public void ActivateCheckpoint()
     {
+        activated = true;
         smellySphere.GetComponent<MeshRenderer>().material = activeMat;
         smellySphere.GetComponent<Animator>().SetBool("Activate", true);
     }

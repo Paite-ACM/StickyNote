@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting.Dependencies.NCalc;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,6 +14,8 @@ public class Player : MonoBehaviour
     private float currentCheckPointZ;
 
     private bool hasReachedCheckpoint;
+
+    private bool controllerMode;
 
     public int Lives
     {
@@ -50,6 +53,12 @@ public class Player : MonoBehaviour
         set { hasReachedCheckpoint = value; }
     }
 
+    public bool ControllerMode
+    {
+        get { return controllerMode; }
+        set { controllerMode = value; }
+    }
+
     public void SavePlayer()
     {
         Debug.Log("Saving player data");
@@ -71,6 +80,7 @@ public class Player : MonoBehaviour
 
         lives = data.lives;
         score = data.score;
+        controllerMode = data.controllerMode;
     }
 
     public void PlayerDeath()

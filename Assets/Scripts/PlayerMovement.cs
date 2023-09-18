@@ -20,6 +20,13 @@ public enum AimState
     AIMING
 }
 
+public enum PowerupState
+{
+    NONE,
+    DOUBLE_JUMP,
+    SHIELD
+}
+
 public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] private Transform playerObj;
@@ -67,6 +74,8 @@ public class PlayerMovement : MonoBehaviour
 
     public AimState aimingState;
 
+    public PowerupState currentPowerup;
+
     // zip related stuff
     [SerializeField] private Transform maxZipDistance;
     [SerializeField] LineRenderer lineRenderer;
@@ -80,6 +89,11 @@ public class PlayerMovement : MonoBehaviour
     private bool onJumpBoost;
 
     private float jumpBoostModifier;
+
+    // double jump specific
+    private bool doubleJumped;
+    private float doubleJumpTimer;
+    [SerializeField] private float doubleJumpTimerLength;
 
     private void Start()
     {
@@ -95,6 +109,11 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
+
+        if (state == MovementState.AIR)
+        {
+            doubleJumpTimer += Time.deltaTime;
+        }
 
         // display/disable aiming line
         if (aimingState == AimState.NEUTRAL)
@@ -119,8 +138,9 @@ public class PlayerMovement : MonoBehaviour
         // handle drag
         if (grounded)
         {
+            doubleJumped = false;
             rb.drag = groundDrag;
-            
+            doubleJumpTimer = 0;   
         }
         else
         {
@@ -232,7 +252,7 @@ public class PlayerMovement : MonoBehaviour
             }
             
             // wow copying everything again i'm disappointed in you, me.
-            if (readyToJump && groundedOnIce)
+            if (state == MovementState.AIR && currentPowerup == PowerupState.DOUBLE_JUMP && doubleJumpTimer > doubleJumpTimerLength && !doubleJumped)
             {
                 if (onJumpBoost)
                 {
@@ -244,7 +264,7 @@ public class PlayerMovement : MonoBehaviour
                 rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
                 rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-
+                doubleJumped = true;
                 Invoke(nameof(ResetJump), jumpCooldown);
             }
         }
@@ -358,6 +378,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        GameObject uiObj = GameObject.Find("Canvas");
         Debug.Log("OnTriggerEnter()");
         switch (other.gameObject.tag)
         {
@@ -374,6 +395,13 @@ public class PlayerMovement : MonoBehaviour
             case "Checkpoint":
                 // checkpoint animation
                 other.gameObject.GetComponent<Checkpoint>().ActivateCheckpoint();
+
+                // notification
+                if (!other.gameObject.GetComponent<Checkpoint>().Activated)
+                {
+                    uiObj.GetComponent<UIScript>().CheckpointNotif();
+                }
+                
                 // set saving location
                 GetComponent<Player>().CurrentCheckPointX = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.x;
                 GetComponent<Player>().CurrentCheckPointY = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.y;
@@ -388,8 +416,24 @@ public class PlayerMovement : MonoBehaviour
                 jumpBoostModifier = other.gameObject.GetComponent<JumpPad>().BoostMultiplier;
                 break;
             case "Goal":
-                GameObject uiObj = GameObject.Find("Canvas");
                 uiObj.GetComponent<UIScript>().PlayerWinScreen();
+                break;
+            case "Powerup":
+                string powerupName = "";
+                // get name of powerup
+                switch (other.gameObject.GetComponent<Powerup>().powerup)
+                {
+                    case PowerupState.DOUBLE_JUMP:
+                        powerupName = "Double Jump";
+                        
+                        break;
+                    case PowerupState.SHIELD:
+                        powerupName = "Bubble Shield";
+                        break;
+                }
+                currentPowerup = other.gameObject.GetComponent<Powerup>().powerup;
+                uiObj.GetComponent<UIScript>().PowerupNotif(powerupName);
+                Destroy(other.gameObject);
                 break;
         }
     }

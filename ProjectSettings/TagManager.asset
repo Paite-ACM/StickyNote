@@ -10,6 +10,7 @@ TagManager:
   - Checkpoint
   - JumpBoost
   - Goal
+  - Powerup
   layers:
   - Default
   - TransparentFX
