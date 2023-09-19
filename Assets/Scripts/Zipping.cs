@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Zipping : MonoBehaviour
@@ -143,25 +142,6 @@ public class Zipping : MonoBehaviour
                 plrMovement.state = MovementState.WALKING;
                 return;
             }
-
-           /* 
-            var d1 = Vector3.Distance(transform.position, maxZipDistance.position);
-            var d2 = Vector3.Distance(transform.position, zipHit.point);
-
-            // if the object is further away from the maxZipDistance obj then it won't let you do anything
-            if (d1 > d2)
-            {
-                Debug.Log("too far");
-                Debug.Log("ziphit = " + zipHit.point.x);
-                plrMovement.state = MovementState.WALKING;
-                return;
-            }
-            else
-            {
-                // move object
-                transform.position += pathway * zipSpeed * Time.deltaTime;
-                //rb.AddForce(pathway * zipSpeed * Time.deltaTime, ForceMode.Force);
-            }  */
 
             transform.position += pathway * zipSpeed * Time.deltaTime;
 
