@@ -415,15 +415,15 @@ public class PlayerMovement : MonoBehaviour
                 }
                 break;
             case "Checkpoint":
-                // checkpoint animation
-                other.gameObject.GetComponent<Checkpoint>().ActivateCheckpoint();
-
                 // notification
                 if (!other.gameObject.GetComponent<Checkpoint>().Activated)
                 {
                     uiObj.GetComponent<UIScript>().CheckpointNotif();
                 }
-                
+
+                // checkpoint animation
+                other.gameObject.GetComponent<Checkpoint>().ActivateCheckpoint();
+
                 // set saving location
                 GetComponent<Player>().CurrentCheckPointX = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.x;
                 GetComponent<Player>().CurrentCheckPointY = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.y;

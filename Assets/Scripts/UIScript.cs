@@ -104,7 +104,6 @@ public class UIScript : MonoBehaviour
     // do animation
     private IEnumerator CheckpointUI()
     {
-        Debug.LogWarning("COROUTINE CALLED");
         checkpointNotif.SetActive(true);
 
         yield return new WaitForSeconds(1.5f);

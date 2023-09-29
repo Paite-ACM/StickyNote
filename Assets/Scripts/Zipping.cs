@@ -25,6 +25,10 @@ public class Zipping : MonoBehaviour
     private float zipTimer;
     private Rigidbody rb;
 
+    private float x;
+    private float y;
+    private float z;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -36,6 +40,7 @@ public class Zipping : MonoBehaviour
     void Update()
     {
         ZipMovement();
+        UpdatePathway();
     }
 
     // time to zip
@@ -56,13 +61,28 @@ public class Zipping : MonoBehaviour
         }
     }
 
+    // if i only record the pathway once, anything could happen that would make going to that
+    // specific position impossible
+    private void UpdatePathway()
+    {
+        x = zipHit.point.x - transform.position.x;
+        y = zipHit.point.y - transform.position.y;
+        z = zipHit.point.z - transform.position.z;
+
+        // get path between the player's position and the raycasts target
+
+        pathway = new Vector3(x, y, z);
+
+        pathway = pathway.normalized;
+    }
+
     private IEnumerator ActivateZip()
     {
         tpCam.timeElapsed = 0f;
         // values for a bit later, moved to test something
-        float x = zipHit.point.x - transform.position.x;
+        /*float x = zipHit.point.x - transform.position.x;
         float y = zipHit.point.y - transform.position.y;
-        float z = zipHit.point.z - transform.position.z;
+        float z = zipHit.point.z - transform.position.z; */
 
         // d1 is the distance between the player object and the object representing the max zip range
         // d2 is the distance between the player and the current zip target
@@ -102,9 +122,9 @@ public class Zipping : MonoBehaviour
 
             // get path between the player's position and the raycasts target
 
-            pathway = new Vector3(x, y, z);
+           /* pathway = new Vector3(x, y, z);
 
-            pathway = pathway.normalized;
+            pathway = pathway.normalized; */
 
             // zip to the desired position
             if (plrMovement.state != MovementState.WALKING)
