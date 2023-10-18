@@ -280,6 +280,7 @@ public class PlayerMovement : MonoBehaviour
             rb.velocity = new Vector3(rb.velocity.x, playerObj.rotation.y, rb.velocity.z);
 
             // using transform.right because there's something off with the object's rotation i think
+            // ^ this comment is outdated LMAO
             rb.AddForce(transform.up * (jumpForce * wallJumpModifier), ForceMode.Impulse);
 
             state = MovementState.AIR;
@@ -294,7 +295,7 @@ public class PlayerMovement : MonoBehaviour
 
     }
 
-    // allows player to jump
+    // allows player to jump again when called
     private void ResetJump()
     {
         readyToJump = true;
