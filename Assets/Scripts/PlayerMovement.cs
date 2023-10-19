@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.SceneManagement;
+using System.Xml;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -10,7 +10,9 @@ public enum MovementState
     WALKING,
     SPRINTING,
     AIR,
-    FREEZE
+    ZIP,
+    WALL,
+    DEATH
 }
 
 public enum AimState
@@ -19,36 +21,44 @@ public enum AimState
     AIMING
 }
 
+public enum PowerupState
+{
+    NONE,
+    DOUBLE_JUMP,
+    SHIELD
+}
 
 public class PlayerMovement : MonoBehaviour
 {
+    [SerializeField] private Transform playerObj;
     [SerializeField] private float speed;
-    [SerializeField] private float zipSpeed;
     [SerializeField] private float walkSpeed;
     [SerializeField] private float sprintSpeed;
-    [SerializeField] private Transform orientation;
+    public Transform orientation;
     public Transform aimingPoint;
 
     [SerializeField] private float groundDrag;
 
-    [SerializeField] private float jumpForce;
+    public float jumpForce;
+    [SerializeField] private float jumpForceDefault;
     [SerializeField] private float jumpCooldown;
     [SerializeField] private float airMultiplier;
 
+    // modifier for jumping off of a wall
+    [SerializeField] private float wallJumpModifier;
 
     public MovementState state;
 
     private bool readyToJump = true;
 
-    public bool freeze;
 
-    public bool zipActive;
+    private bool groundedOnIce;
 
     [SerializeField] private bool grounded;
     [SerializeField] private bool stuckToWall;
     [SerializeField] private float height;
-    [SerializeField] private LayerMask ground;
-    [SerializeField] private LayerMask zippableWall;
+    public LayerMask ground;
+    public LayerMask ice;
     [SerializeField] private LayerMask Hazard;
 
     [SerializeField] float maxSlopeAngle;
@@ -59,17 +69,15 @@ public class PlayerMovement : MonoBehaviour
 
     private Vector3 moveDir;
 
-    private Vector3 velocityToSet;
-
     [SerializeField] private Rigidbody rb;
 
     private bool exitingSlope;
 
     public AimState aimingState;
 
-    private bool canMoveAgain;
+    public PowerupState currentPowerup;
 
-    // zip related stuff (lots of it probably unused now)
+    // zip related stuff
     [SerializeField] private Transform maxZipDistance;
     [SerializeField] LineRenderer lineRenderer;
     private Ray zipRay;
@@ -78,6 +86,18 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 pathway;
 
     private float zipTimer;
+
+    private bool onJumpBoost;
+
+    private float jumpBoostModifier;
+
+    // double jump specific
+    private bool doubleJumped;
+    private float doubleJumpTimer;
+    [SerializeField] private float doubleJumpTimerLength;
+
+    // shield powerup
+    [SerializeField] private GameObject shieldObj;
 
     private void Start()
     {
@@ -93,11 +113,10 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
-        ZipMovement();
 
-        if (state == MovementState.ZIP)
+        if (state == MovementState.AIR)
         {
-            zipTimer += Time.deltaTime;
+            doubleJumpTimer += Time.deltaTime;
         }
 
         // display/disable aiming line
@@ -115,14 +134,17 @@ public class PlayerMovement : MonoBehaviour
         // check ground
         grounded = Physics.Raycast(transform.position, Vector3.down, height * 0.5f + 0.2f, ground);
 
+        // ice ground
+        groundedOnIce = Physics.Raycast(transform.position, Vector3.down, height * 0.5f + 0.2f, ice);
        
         SpeedControl();
         StateHandler();
         // handle drag
-        if (grounded && !zipActive)
+        if (grounded)
         {
+            doubleJumped = false;
             rb.drag = groundDrag;
-            
+            doubleJumpTimer = 0;   
         }
         else
         {
@@ -142,39 +164,6 @@ public class PlayerMovement : MonoBehaviour
         if (grounded && state == MovementState.AIR)
         {
             state = MovementState.WALKING;
-        }
-
-        // halting movement
-        if (freeze)
-        {
-            state = MovementState.FREEZE;
-            speed = 0;
-            rb.velocity = Vector3.zero;
-            
-        }
-    }
-
-    private void SetVelocity()
-    {
-        canMoveAgain = true;
-        rb.velocity = velocityToSet;
-    }
-
-    private void ResetZip()
-    {
-        zipActive = false;
-
-    }
-    
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (canMoveAgain)
-        {
-            canMoveAgain = false;
-            ResetZip();
-
-            GetComponent<Zipping>().StopZip();
         }
     }
 
@@ -198,17 +187,9 @@ public class PlayerMovement : MonoBehaviour
 
     private void MovePlayer()
     {
-        if (zipActive)
+        if (state != MovementState.ZIP && state != MovementState.WALL && state != MovementState.DEATH)
         {
-            return;
-        }
-
-        moveDir = orientation.forward * vertical + orientation.right * horizontal;
-
-        // slope handling
-        if (OnSlope())
-        {
-            rb.AddForce(GetSlopeMoveDirection() * speed * 10f, ForceMode.Force);
+            moveDir = orientation.forward * vertical + orientation.right * horizontal;
 
             // slope handling
             if (OnSlope())
@@ -236,6 +217,10 @@ public class PlayerMovement : MonoBehaviour
             // no more gravity while sloped
             rb.useGravity = !OnSlope();
         }
+        else
+        {
+            return;
+        }
         
     }
 
@@ -251,11 +236,16 @@ public class PlayerMovement : MonoBehaviour
     // if this doesn't work then you probably didn't set the layer on the ground object
     public void Jump()
     {
-        if (state != MovementState.ZIP && state != MovementState.WALL)
+        if (state != MovementState.ZIP && state != MovementState.WALL && state != MovementState.DEATH)
         {
             exitingSlope = true;
             if (readyToJump && grounded)
             {
+                if (onJumpBoost)
+                {
+                    jumpForce *= jumpBoostModifier;
+                }
+
                 readyToJump = false;
                 // reset y velocity
                 rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
@@ -264,24 +254,48 @@ public class PlayerMovement : MonoBehaviour
 
                 Invoke(nameof(ResetJump), jumpCooldown);
             }
+            
+            // wow copying everything again i'm disappointed in you, me.
+            if (state == MovementState.AIR && currentPowerup == PowerupState.DOUBLE_JUMP && doubleJumpTimer > doubleJumpTimerLength && !doubleJumped)
+            {
+                if (onJumpBoost)
+                {
+                    jumpForce *= jumpBoostModifier;
+                }
+
+                readyToJump = false;
+                // reset y velocity
+                rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+                rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+                doubleJumped = true;
+                Invoke(nameof(ResetJump), jumpCooldown);
+            }
         }
         
         if (state == MovementState.WALL)
         {
             readyToJump = false;
             // reset y velocity
-            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+            rb.velocity = new Vector3(rb.velocity.x, playerObj.rotation.y, rb.velocity.z);
 
             // using transform.right because there's something off with the object's rotation i think
-            rb.AddForce(transform.right * jumpForce, ForceMode.Impulse);
+            // ^ this comment is outdated LMAO
+            rb.AddForce(transform.up * (jumpForce * wallJumpModifier), ForceMode.Impulse);
 
             state = MovementState.AIR;
             Invoke(nameof(ResetJump), jumpCooldown);
         }
 
+        // break out of zip
+        if (state == MovementState.ZIP)
+        {
+             state = MovementState.AIR;
+        }
+
     }
 
-    // allows player to jump
+    // allows player to jump again when called
     private void ResetJump()
     {
         readyToJump = true;
@@ -290,11 +304,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void SpeedControl()
     {
-        if (zipActive)
-        {
-            return;
-        }
-
+        
         if (OnSlope() && !exitingSlope)
         {
             // slope speed limit
@@ -317,19 +327,6 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
-    }
-
-    // actually moving to zip spot
-    public void ZipToPosition(Vector3 target, float trajectoryHeight)
-    {
-        zipActive = true;
-        velocityToSet = CalculateZipVelocity(transform.position, target, trajectoryHeight);
-
-        // delay applying velocity by just a smidge
-        Invoke(nameof(SetVelocity), 0.1f);
-
-        // failsafe assuming something went wrong allow movement after a while
-        Invoke(nameof(ResetZip), 4.0f);
     }
 
     private bool OnSlope()
@@ -363,16 +360,119 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    // calculations for zip force
-    public Vector3 CalculateZipVelocity(Vector3 startPoint, Vector3 endPoint, float trajectoryHeight)
+    // when getting hit while a shield is active
+    private void DestroyShield()
     {
-        float gravity = Physics.gravity.y;
-        float displacementY = endPoint.y - startPoint.y;
-        Vector3 displacementXZ = new Vector3(endPoint.x - startPoint.x, 0f, endPoint.z - startPoint.z);
+        shieldObj.SetActive(false);
+        currentPowerup = PowerupState.NONE;
+    }
 
-        Vector3 velocityY = Vector3.up * Mathf.Sqrt(-2 * gravity * trajectoryHeight);
-        Vector3 velocityXZ = displacementXZ / (Mathf.Sqrt(-2 * trajectoryHeight / gravity) + Mathf.Sqrt(2 * (displacementY - trajectoryHeight / gravity)));
+    private void OnCollisionEnter(Collision collision)
+    {
 
-        return velocityXZ + velocityY;
+
+        switch (collision.gameObject.layer)
+        {
+            // hazard layer
+            case 8:
+                if (currentPowerup != PowerupState.SHIELD)
+                {
+                    collision.gameObject.GetComponent<BoxCollider>().enabled = false;
+                    state = MovementState.DEATH;
+                    Debug.Log("Collision with hazard");
+                    GetComponent<Player>().PlayerDeath();
+                }
+                else
+                {
+                    DestroyShield();
+                }
+                
+                break;
+            // respawn layer
+            case 10:
+                // ignores shield powerup
+                collision.gameObject.GetComponent<BoxCollider>().enabled = false;
+                state = MovementState.DEATH;
+                Debug.Log("Collision with hazard");
+                GetComponent<Player>().PlayerDeath();
+                break;
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        GameObject uiObj = GameObject.Find("Canvas");
+        Debug.Log("OnTriggerEnter()");
+        switch (other.gameObject.tag)
+        {
+            case "Collectable":
+                Debug.Log("Collision!");
+                switch (other.gameObject.GetComponent<Collectables>().colletableType)
+                {
+                    case CollectableType.COIN:
+                        GetComponent<Player>().Score += other.gameObject.GetComponent<Collectables>().scoreToGive;
+                        Destroy(other.gameObject);
+                        break;
+                }
+                break;
+            case "Checkpoint":
+                // notification
+                if (!other.gameObject.GetComponent<Checkpoint>().Activated)
+                {
+                    uiObj.GetComponent<UIScript>().CheckpointNotif();
+                }
+
+                // checkpoint animation
+                other.gameObject.GetComponent<Checkpoint>().ActivateCheckpoint();
+
+                // set saving location
+                GetComponent<Player>().CurrentCheckPointX = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.x;
+                GetComponent<Player>().CurrentCheckPointY = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.y;
+                GetComponent<Player>().CurrentCheckPointZ = other.gameObject.GetComponent<Checkpoint>().RespawnPosition.z;
+                GetComponent<Player>().HasReachedCheckpoint = true;
+                // save
+                GetComponent<Player>().SavePlayer();
+                break;
+            case "JumpBoost":
+                Debug.Log("On jump boost");
+                onJumpBoost = true;
+                jumpBoostModifier = other.gameObject.GetComponent<JumpPad>().BoostMultiplier;
+                break;
+            case "Goal":
+                uiObj.GetComponent<UIScript>().PlayerWinScreen();
+                break;
+            case "Powerup":
+                string powerupName = "";
+                // get name of powerup
+                switch (other.gameObject.GetComponent<Powerup>().powerup)
+                {
+                    case PowerupState.DOUBLE_JUMP:
+                        powerupName = "Double Jump";
+                        
+                        break;
+                    case PowerupState.SHIELD:
+                        powerupName = "Bubble Shield";
+                        shieldObj.SetActive(true);
+                        break;
+                }
+                currentPowerup = other.gameObject.GetComponent<Powerup>().powerup;
+                uiObj.GetComponent<UIScript>().PowerupNotif(powerupName);
+                Destroy(other.gameObject);
+                break;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        Debug.Log("OnTriggerExit");
+        switch (other.gameObject.tag)
+        {
+            case "JumpBoost":
+                Debug.Log("Jelp");
+                jumpBoostModifier = 0f;
+                jumpForce = jumpForceDefault;
+                onJumpBoost = false;
+                break;
+        }
     }
 }

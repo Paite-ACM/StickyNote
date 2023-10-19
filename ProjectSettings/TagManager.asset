@@ -6,6 +6,11 @@ TagManager:
   tags:
   - Hazard
   - Respawner
+  - Collectable
+  - Checkpoint
+  - JumpBoost
+  - Goal
+  - Powerup
   layers:
   - Default
   - TransparentFX
@@ -16,8 +21,8 @@ TagManager:
   - 
   - Ground
   - Hazard
-  - Zippable
-  - 
+  - Wall
+  - Respawner
   - 
   - 
   - 

@@ -1,120 +1,181 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class Zipping : MonoBehaviour
 {
 
+    // get distance between player obj and maxDistance obj
+    // get distance between current zip target and player
+    // if the distance between the zip target and the player is too large then cancel the zip
+
+
     [SerializeField] private PlayerMovement plrMovement;
-    [SerializeField] private Transform cam;
-    [SerializeField] private Transform zipAimer;
-    [SerializeField] private LayerMask zippable;
-    [SerializeField] private LineRenderer lr;
+    [SerializeField] private Transform maxZipDistance;
+    [SerializeField] private Transform minZipDistance;
+    //[SerializeField] LineRenderer lineRenderer;
+    [SerializeField] private float zipSpeed;
+    [SerializeField] private LayerMask zippableWall;
+    [SerializeField] private ThirdPerson tpCam;
+    private Ray zipRay;
+    private RaycastHit zipHit;
+    Camera cam;
+    private Vector3 pathway;
 
-    [SerializeField] private float maxZipDistance;
-    [SerializeField] private float zipDelay;
-    [SerializeField] private float overshootYAxis;
+    private float zipTimer;
+    private Rigidbody rb;
 
-    private Vector3 zipPoint;
+    private float x;
+    private float y;
+    private float z;
 
-    [SerializeField] private float zipCooldown;
-    [SerializeField] private float zipCooldownTimer;
-
-    [SerializeField] private bool zipping;
-
-    private void Update()
+    // Start is called before the first frame update
+    void Start()
     {
-        if (zipCooldownTimer > 0)
-        {
-            zipCooldownTimer -= Time.deltaTime;
-        }
+        cam = Camera.main;
+        rb = GetComponent<Rigidbody>();
     }
 
-    private void Start()
+    // Update is called once per frame
+    void Update()
     {
-        lr.enabled = false;
+        ZipMovement();
+        UpdatePathway();
     }
 
-    private void LateUpdate()
+    // time to zip
+    // gets called by input system!!)
+    public void ZipToPosition()
     {
-        if (zipping)
+        // aiming raycast
+        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out zipHit) && plrMovement.aimingState == AimState.AIMING)
         {
-            // keep line position on the aimer object
-            lr.SetPosition(0, zipAimer.position);
-        }
-    }
-
-    // initiate zip
-    // public so that the input system can access it
-    public void StartZip(InputAction.CallbackContext context)
-    {
-        // only work if aiming in
-        if (plrMovement.aimingState == AimState.AIMING)
-        {
-            if (context.started)
+            Debug.Log("zipHit layer: " + zipHit.transform.gameObject.layer);
+            Debug.Log("zippableWall layer: " + LayerMask.NameToLayer("Wall"));
+            if (zipHit.transform.gameObject.layer == LayerMask.NameToLayer("Wall"))
             {
-                // check if cooldown is already active
-                if (zipCooldownTimer > 0)
-                {
-                    return;
-                }
-
-                zipping = true;
-                plrMovement.freeze = true;
-
-                // funky little raycasting
-                RaycastHit hit;
-                if (Physics.Raycast(cam.position, cam.forward, out hit, maxZipDistance, zippable))
-                {
-                    zipPoint = hit.point;
-
-                    // call the execution of the zip on the specified delay
-                    Invoke(nameof(ExecuteZip), zipDelay);
-                }
-                else
-                {
-                    zipPoint = cam.position + cam.forward * maxZipDistance;
-
-                    Invoke(nameof(StopZip), zipDelay);
-                }
-
-                lr.enabled = true;
-                lr.SetPosition(1, zipPoint);
+                Debug.Log(zipHit.point);
+                Debug.Log(maxZipDistance.position);
+                StartCoroutine(ActivateZip());
             }
+        }
+    }
+
+    // if i only record the pathway once, anything could happen that would make going to that
+    // specific position impossible
+    private void UpdatePathway()
+    {
+        x = zipHit.point.x - transform.position.x;
+        y = zipHit.point.y - transform.position.y;
+        z = zipHit.point.z - transform.position.z;
+
+        // get path between the player's position and the raycasts target
+
+        pathway = new Vector3(x, y, z);
+
+        pathway = pathway.normalized;
+    }
+
+    private IEnumerator ActivateZip()
+    {
+        tpCam.timeElapsed = 0f;
+        // values for a bit later, moved to test something
+        /*float x = zipHit.point.x - transform.position.x;
+        float y = zipHit.point.y - transform.position.y;
+        float z = zipHit.point.z - transform.position.z; */
+
+        // d1 is the distance between the player object and the object representing the max zip range
+        // d2 is the distance between the player and the current zip target
+        // d3 is the distance between the player and the object representing the minimum zip range
+        var d1 = Vector3.Distance(transform.position, maxZipDistance.position);
+        var d2 = Vector3.Distance(transform.position, zipHit.point);
+        var d3 = Vector3.Distance(transform.position, minZipDistance.position);
+        // if the object is further away from the maxZipDistance obj then it won't let you do anything
+        // or if the minZipDistance obj is further away from the zipping object do the same thing
+        if (d1 < d2 || d2 < d3)
+        {
+            Debug.LogWarning("too far or too close");
+            Debug.Log("ziphit = " + zipHit.point.x);
+            zipHit = new RaycastHit();
+            plrMovement.state = MovementState.WALKING;
+            yield break;
             
         }
+        else
+        {
+            // get off the ground if not already off the ground
+            if (plrMovement.state != MovementState.AIR)
+            {
+                plrMovement.state = MovementState.AIR;
+                rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+                rb.AddForce(transform.up * plrMovement.jumpForce, ForceMode.Impulse);
+
+                yield return new WaitForSeconds(0.5f);
+            }
+            else
+            {
+                yield return new WaitForSeconds(0.1f);
+            }
+
+            
+
+            // get path between the player's position and the raycasts target
+
+           /* pathway = new Vector3(x, y, z);
+
+            pathway = pathway.normalized; */
+
+            // zip to the desired position
+            if (plrMovement.state != MovementState.WALKING)
+            {
+                plrMovement.aimingState = AimState.NEUTRAL;
+                plrMovement.state = MovementState.ZIP;
+            }
+            else
+            {
+                pathway = new Vector3(0, 0, 0);
+            }
+
+        }
     }
 
-    private void ExecuteZip()
+    // what actually moves the player during a zip
+    private void ZipMovement()
     {
-        plrMovement.freeze = false;
-
-
-        // lowest point of the player
-        Vector3 lowestPoint = new Vector3(transform.position.x, transform.position.y - 1f, transform.position.z);
-
-        // difference between player's lowest point and where the zip target is & the overshoot
-        float zipPointRelativeYPos = zipPoint.y - lowestPoint.y;
-        float highestPointOnArc = zipPointRelativeYPos + overshootYAxis;
-
-        // use overshoot if point is below the player
-        if (zipPointRelativeYPos < 0)
+        if (plrMovement.state != MovementState.ZIP)
         {
-            highestPointOnArc = overshootYAxis;
+            return;
         }
 
-        plrMovement.ZipToPosition(zipPoint, highestPointOnArc);
+        if (plrMovement.state == MovementState.ZIP)
+        {
+            zipTimer += Time.deltaTime;
+        }
 
-        // le delay
-        Invoke(nameof(StopZip), 1.0f);
-    }
+        // moved from Update() for organisation
+        if (!Physics.Raycast(transform.position, plrMovement.orientation.forward, 1f, plrMovement.ground))
+        {
+            if (pathway.x == 0f && pathway.y == 0f && pathway.z == 0f)
+            {
+                Debug.Log("Non-existent path");
+                plrMovement.state = MovementState.WALKING;
+                return;
+            }
 
-    public void StopZip()
-    {
-        plrMovement.freeze = false;
-        zipping = false;
-        zipCooldownTimer = zipCooldown;
-        lr.enabled = false;
+            transform.position += pathway * zipSpeed * Time.deltaTime;
+
+        }
+        else
+        {
+            // check to make sure the player actually is still zipping
+            if (plrMovement.state == MovementState.ZIP)
+            {
+                rb.velocity = new Vector3(0, 0, 0);
+                rb.useGravity = false;
+                plrMovement.state = MovementState.WALL;
+                zipHit = new RaycastHit();
+            }
+        }
     }
 }

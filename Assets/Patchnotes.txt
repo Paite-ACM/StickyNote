@@ -1,0 +1,22 @@
+Version 0.1
+>Initial build
+
+Version 0.2
+>Added death and game overs
+>Added a metallic material to the metal ball
+>Added a jump pad
+>Added falling platform hazards
+>Implemented save system
+>Fixed cursor not appearing when openning the menu
+>Fixed respawn object not functioning
+
+Version 0.3
+>Added the abilitiy to cancel a zip by jumping
+>Added an additional checkpoint and collectable
+>Added a goal object and win screen
+>Added additional UI for checkpoints
+>Added powerups:
+   >Added double jump
+   >Added a shield that protects you from one hit
+>Made smooth FOV changes when zipping
+>Falling below the map now counts as a death instead of just reloading the scene

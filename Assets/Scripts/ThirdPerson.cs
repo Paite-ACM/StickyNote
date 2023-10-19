@@ -1,7 +1,6 @@
 using Cinemachine;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.PlasticSCM.Editor.WebApi;
 using UnityEngine;
 
 public enum CameraStyle
@@ -23,15 +22,21 @@ public class ThirdPerson : MonoBehaviour
     [SerializeField] private CameraStyle style;
     [SerializeField] Transform combatLookAt;
     [SerializeField] private CinemachineFreeLook mainCamera;
+    [SerializeField] private float fovChangeLerpDuration;
 
-    [SerializeField] private PlayerMovement plrMovement;
+    private PlayerMovement playerController;
+
+    private bool controllerMode;
+
+    public float timeElapsed;
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-       
+        // cache player
+        playerController = player.gameObject.GetComponent<PlayerMovement>();
     }
 
     private void Update()
@@ -53,7 +58,11 @@ public class ThirdPerson : MonoBehaviour
                 // face the direction of the camera
                 if (inDir != Vector3.zero)
                 {
-                    playerObj.forward = Vector3.Slerp(playerObj.forward, inDir.normalized, Time.deltaTime * rotateSpeed);
+                    if (playerController.state != MovementState.ZIP && playerController.state != MovementState.WALL)
+                    {
+                        playerObj.forward = Vector3.Slerp(playerObj.forward, inDir.normalized, Time.deltaTime * rotateSpeed);
+                    }
+
                 }
                 break;
             case CameraStyle.COMBAT:
@@ -65,16 +74,65 @@ public class ThirdPerson : MonoBehaviour
                 break;
         }
 
-        // camera fov based on if aiming
-        switch (plrMovement.aimingState)
-        {
-            case AimState.NEUTRAL:
-                mainCamera.m_Lens.FieldOfView = 50;
-                break;
-            case AimState.AIMING:
-                mainCamera.m_Lens.FieldOfView = 30;
-                break;
-        } 
+        
 
+        // camera fov change on zip
+        if (playerController.state == MovementState.ZIP)
+        {
+            if (timeElapsed < fovChangeLerpDuration)
+            {
+                mainCamera.m_Lens.FieldOfView = Mathf.Lerp(mainCamera.m_Lens.FieldOfView, 90f, timeElapsed / fovChangeLerpDuration);
+                timeElapsed += Time.deltaTime;
+            }
+            else
+            {
+                mainCamera.m_Lens.FieldOfView = 90f;
+                timeElapsed = 0f;
+            }
+        }
+        else if (playerController.state == MovementState.WALL)
+        {
+            // the same but backwards
+            if (timeElapsed < fovChangeLerpDuration)
+            {
+                mainCamera.m_Lens.FieldOfView = Mathf.Lerp(mainCamera.m_Lens.FieldOfView, 50f, timeElapsed / fovChangeLerpDuration);
+                timeElapsed += Time.deltaTime;
+            }
+            else
+            {
+                mainCamera.m_Lens.FieldOfView = 50f;
+                timeElapsed = 0f;
+            }
+        }
+        else
+        {
+            // camera fov based on if aiming
+            switch (playerController.aimingState)
+            {
+                case AimState.NEUTRAL:
+                    mainCamera.m_Lens.FieldOfView = 50;
+                    break;
+                case AimState.AIMING:
+                    mainCamera.m_Lens.FieldOfView = 30;
+                    break;
+            }
+        }
+        
+
+        // camera controller sensitivity
+        if (controllerMode)
+        {
+            mainCamera.m_XAxis.m_MaxSpeed = 1;
+        }
+        else
+        {
+            mainCamera.m_XAxis.m_MaxSpeed = 0.1f;
+        }
+
+    }
+
+    public void ToggleControllerMode(bool toggle)
+    {
+        controllerMode = toggle;
     }
 }
