@@ -29,6 +29,7 @@ public class Zipping : MonoBehaviour
     private float y;
     private float z;
 
+
     // Start is called before the first frame update
     void Start()
     {
@@ -48,15 +49,18 @@ public class Zipping : MonoBehaviour
     public void ZipToPosition()
     {
         // aiming raycast
-        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out zipHit) && plrMovement.aimingState == AimState.AIMING)
+        if (plrMovement.state != MovementState.ZIP)
         {
-            Debug.Log("zipHit layer: " + zipHit.transform.gameObject.layer);
-            Debug.Log("zippableWall layer: " + LayerMask.NameToLayer("Wall"));
-            if (zipHit.transform.gameObject.layer == LayerMask.NameToLayer("Wall"))
+            if (Physics.Raycast(cam.transform.position, cam.transform.forward, out zipHit) && plrMovement.aimingState == AimState.AIMING)
             {
-                Debug.Log(zipHit.point);
-                Debug.Log(maxZipDistance.position);
-                StartCoroutine(ActivateZip());
+                Debug.Log("zipHit layer: " + zipHit.transform.gameObject.layer);
+                Debug.Log("zippableWall layer: " + LayerMask.NameToLayer("Wall"));
+                if (zipHit.transform.gameObject.layer == LayerMask.NameToLayer("Wall"))
+                {
+                    Debug.Log(zipHit.point);
+                    Debug.Log(maxZipDistance.position);
+                    StartCoroutine(ActivateZip());
+                }
             }
         }
     }
@@ -84,59 +88,74 @@ public class Zipping : MonoBehaviour
         float y = zipHit.point.y - transform.position.y;
         float z = zipHit.point.z - transform.position.z; */
 
-        // d1 is the distance between the player object and the object representing the max zip range
-        // d2 is the distance between the player and the current zip target
-        // d3 is the distance between the player and the object representing the minimum zip range
-        var d1 = Vector3.Distance(transform.position, maxZipDistance.position);
-        var d2 = Vector3.Distance(transform.position, zipHit.point);
-        var d3 = Vector3.Distance(transform.position, minZipDistance.position);
-        // if the object is further away from the maxZipDistance obj then it won't let you do anything
-        // or if the minZipDistance obj is further away from the zipping object do the same thing
-        if (d1 < d2 || d2 < d3)
+        // first things first lets check the zipHit layer and make sure its correct
+        // it was checked before but this is just like, a double check to make sure
+        // kinda stupid that it needs to exist but sometimes things are like that
+        if (zipHit.transform.gameObject.layer == LayerMask.NameToLayer("Wall"))
         {
-            Debug.LogWarning("too far or too close");
-            Debug.Log("ziphit = " + zipHit.point.x);
-            zipHit = new RaycastHit();
-            plrMovement.state = MovementState.WALKING;
-            yield break;
-            
+            // d1 is the distance between the player object and the object representing the max zip range
+            // d2 is the distance between the player and the current zip target
+            // d3 is the distance between the player and the object representing the minimum zip range
+            var d1 = Vector3.Distance(transform.position, maxZipDistance.position);
+            var d2 = Vector3.Distance(transform.position, zipHit.point);
+            var d3 = Vector3.Distance(transform.position, minZipDistance.position);
+            // if the object is further away from the maxZipDistance obj then it won't let you do anything
+            // or if the minZipDistance obj is further away from the zipping object do the same thing
+            if (d1 < d2 || d2 < d3)
+            {
+                Debug.LogWarning("too far or too close");
+                Debug.Log("ziphit = " + zipHit.point.x);
+                zipHit = new RaycastHit();
+                plrMovement.state = MovementState.WALKING;
+                yield break;
+
+            }
+            else
+            {
+                // get off the ground if not already off the ground
+                if (plrMovement.state != MovementState.AIR)
+                {
+                    plrMovement.state = MovementState.AIR;
+                    rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+                    rb.AddForce(transform.up * plrMovement.jumpForce, ForceMode.Impulse);
+
+                    yield return new WaitForSeconds(0.5f);
+                }
+                else
+                {
+                    yield return new WaitForSeconds(0.1f);
+                }
+
+
+
+                // get path between the player's position and the raycasts target
+
+                /* pathway = new Vector3(x, y, z);
+
+                 pathway = pathway.normalized; */
+
+                // zip to the desired position
+                if (plrMovement.state != MovementState.WALKING)
+                {
+                    plrMovement.aimingState = AimState.NEUTRAL;
+                    plrMovement.state = MovementState.ZIP;
+                }
+                else
+                {
+                    pathway = new Vector3(0, 0, 0);
+                }
+
+            }
+
+
         }
         else
         {
-            // get off the ground if not already off the ground
-            if (plrMovement.state != MovementState.AIR)
-            {
-                plrMovement.state = MovementState.AIR;
-                rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-
-                rb.AddForce(transform.up * plrMovement.jumpForce, ForceMode.Impulse);
-
-                yield return new WaitForSeconds(0.5f);
-            }
-            else
-            {
-                yield return new WaitForSeconds(0.1f);
-            }
-
-            
-
-            // get path between the player's position and the raycasts target
-
-           /* pathway = new Vector3(x, y, z);
-
-            pathway = pathway.normalized; */
-
-            // zip to the desired position
-            if (plrMovement.state != MovementState.WALKING)
-            {
-                plrMovement.aimingState = AimState.NEUTRAL;
-                plrMovement.state = MovementState.ZIP;
-            }
-            else
-            {
-                pathway = new Vector3(0, 0, 0);
-            }
-
+            Debug.Log("Target isn't a wall");
+            zipHit = new RaycastHit();
+            plrMovement.state = MovementState.WALKING;
+            yield break;
         }
     }
 
